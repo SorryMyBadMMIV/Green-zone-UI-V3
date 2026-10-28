@@ -14,6 +14,8 @@ An interactive map for **Green Zone** (GeoHackathon 2026, GISTDA): urban green s
 
 > This is the frontend only. Suan Luang uses the backend's real green results and the BMA park list, Don Mueang still uses example data, and the abandoned plots in both districts are **example data** until the backend detects abandoned land.
 
+**Live site:** https://sorrymybadmmiv.github.io/Green-zone-UI-V3/
+
 ## Run it
 
 You need Node.js 22.12 or newer (tested with Node 24).
@@ -37,6 +39,10 @@ Then open http://localhost:5173.
 | `npm run preview` | Serve the production build locally |
 
 ## Put it online for everyone
+
+**GitHub Pages (already set up):** every push to `main` runs `.github/workflows/deploy.yml`. It installs the packages, runs the tests, builds the app and publishes it at https://sorrymybadmmiv.github.io/Green-zone-UI-V3/ in about two minutes. If a test fails, nothing is published and the site keeps the last good version. Watch it in the repo's **Actions** tab.
+
+**Any other web host:**
 
 1. Run `npm run build`. It makes the `dist/` folder: the whole app, with the data and images built in.
 2. Upload everything inside `dist/` to any static web host, for example GitHub Pages, Netlify, Vercel, or a folder on a school or office web server. It works at the top of a site and in a subfolder such as `https://example.com/green-lantern/`, with no extra settings.
