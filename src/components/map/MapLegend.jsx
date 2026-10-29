@@ -59,10 +59,10 @@ export default function MapLegend({ district }) {
         Abandoned land
       </Row>
       <Row>
-        <span className="flex size-4 shrink-0 items-center justify-center rounded-full bg-neutral-900 text-[10px] text-amber-300" aria-hidden="true">
-          ★
+        <span className="flex size-4 shrink-0 items-center justify-center rounded-full border border-slate-600 bg-slate-50 text-[9px] font-bold text-slate-700" aria-hidden="true">
+          ✓
         </span>
-        Recommended
+        Good example plot (off at start)
       </Row>
       <Row>
         <Swatch color={COLORS.gridGreen} />
@@ -79,8 +79,10 @@ export default function MapLegend({ district }) {
       {(district?.data.gaSites || district?.data.greenGroups) && <p className="mb-1 mt-2 font-semibold">Backend results</p>}
       {district?.data.gaSites && (
         <Row>
-          <span className="mx-0.5 size-2.5 shrink-0 rotate-45 border border-white shadow" style={{ background: COLORS.gaSite }} aria-hidden="true" />
-          GA park site (candidate)
+          <span className="flex size-4 shrink-0 items-center justify-center rounded-full bg-neutral-900 text-[10px] text-amber-300" aria-hidden="true">
+            ★
+          </span>
+          Recommended site (GA)
         </Row>
       )}
       {district?.data.greenGroups && (

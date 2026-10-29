@@ -12,7 +12,7 @@ import { loadParks } from './lib/parks.js';
 const ALL_PARKS = loadParks(parkList);
 const focusOf = (district) => district.boundaries.features.find((f) => f.properties.role === 'focus').geometry;
 // Hiding a layer clears a selection of that kind.
-const LAYER_KIND = { green: 'green', abandoned: 'grey', gaSites: 'ga', greenGroups: 'group' };
+const LAYER_KIND = { green: 'green', abandoned: 'grey', recommend: 'ga', greenGroups: 'group' };
 const isPhone = () => typeof window !== 'undefined' && typeof window.matchMedia === 'function' && !window.matchMedia('(min-width: 1024px)').matches;
 
 export default function App() {

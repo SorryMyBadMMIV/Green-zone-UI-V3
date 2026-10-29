@@ -9,7 +9,7 @@ import { formatKm2 } from '../../lib/format.js';
 import { frameCenter, frameRing, maskPolygon, polygonAreaM2 } from '../../lib/geo.js';
 import ClassifiedGridLayer from './ClassifiedGridLayer.jsx';
 import FrameImageLayer from './FrameImageLayer.jsx';
-import GaSiteMarkers from './GaSiteMarkers.jsx';
+import ExampleScoreMarks from './ExampleScoreMarks.jsx';
 import GreenGroupLayer from './GreenGroupLayer.jsx';
 import MapLegend from './MapLegend.jsx';
 import MapOptions from './MapOptions.jsx';
@@ -298,8 +298,8 @@ export default function ZoneMap({
         <Pane name="groups" style={{ zIndex: 395 }}>
           {options.greenGroups && greenGroups && <GreenGroupLayer greenGroups={greenGroups} selected={selected} onSelect={onSelect} />}
         </Pane>
-        {options.recommend && options.abandoned && analysis && <RecommendMarkers analysis={analysis} onSelect={onSelect} />}
-        {options.gaSites && gaSites && <GaSiteMarkers gaSites={gaSites} sitesInSquare={sitesInSquare} selected={selected} onSelect={onSelect} />}
+        {options.exampleScore && options.abandoned && analysis && <ExampleScoreMarks analysis={analysis} onSelect={onSelect} />}
+        {options.recommend && gaSites && <RecommendMarkers gaSites={gaSites} sitesInSquare={sitesInSquare} selected={selected} onSelect={onSelect} />}
       </MapContainer>
       <MapButtons map={map} onReset={resetView} />
       <MapOptions

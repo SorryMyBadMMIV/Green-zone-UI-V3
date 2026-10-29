@@ -1,28 +1,38 @@
 import { Marker, Tooltip } from 'react-leaflet';
 import L from 'leaflet';
+import { formatArea } from '../../lib/format.js';
 
-const STAR = L.divIcon({ className: 'recommend-star', html: '<span aria-hidden="true">★</span>', iconSize: [26, 26], iconAnchor: [13, 13] });
+const icon = (selected) =>
+  L.divIcon({
+    className: `recommend-star${selected ? ' is-selected' : ''}`,
+    html: '<span aria-hidden="true">★</span>',
+    iconSize: [26, 26],
+    iconAnchor: [13, 13],
+  });
+const STAR = icon(false);
+const SELECTED_STAR = icon(true);
 
-/** The ★ tooltip; example plots say so first. */
-export function starLabel({ score, level, isExample }) {
-  return `${isExample ? 'Example · ' : ''}★ Recommended · ${level.label} · score ${score}`;
+/** The ★ tooltip: a recommended site from the backend GA, its rank in its 1 km square and its area. */
+export function recommendLabel(site, sitesInSquare) {
+  return `★ Recommended site (GA) · rank ${site.rank}${sitesInSquare ? ` of ${sitesInSquare}` : ''} in its 1 km square · ${formatArea(site.areaM2)}`;
 }
 
-/** A ★ on every recommended plot (inside the plot); clicking it selects the plot. */
-export default function RecommendMarkers({ analysis, onSelect }) {
-  return analysis.recommendedIds.map((id) => {
-    const plot = analysis.plots[id];
+/** A ★ on every site the backend's genetic algorithm recommends; clicking one selects it. */
+export default function RecommendMarkers({ gaSites, sitesInSquare, selected, onSelect }) {
+  return gaSites.features.map(({ geometry, properties: site }) => {
+    const isSelected = selected?.kind === 'ga' && selected.id === site.id;
     return (
       <Marker
-        key={id}
-        position={[plot.point[1], plot.point[0]]}
-        icon={STAR}
+        key={site.id}
+        position={[geometry.coordinates[1], geometry.coordinates[0]]}
+        icon={isSelected ? SELECTED_STAR : STAR}
+        zIndexOffset={isSelected ? 1000 : 0}
         keyboard={false}
         bubblingMouseEvents={false}
-        eventHandlers={{ click: () => onSelect({ kind: 'grey', id }) }}
+        eventHandlers={{ click: () => onSelect({ kind: 'ga', id: site.id }) }}
       >
         <Tooltip direction="top" offset={[0, -12]}>
-          {starLabel(plot)}
+          {recommendLabel(site, sitesInSquare[site.zone])}
         </Tooltip>
       </Marker>
     );

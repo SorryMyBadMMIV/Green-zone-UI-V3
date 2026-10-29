@@ -5,15 +5,15 @@ import PanelHeader from './PanelHeader.jsx';
 import { COLORS } from '../../lib/constants.js';
 import { DASH, formatArea, formatDecimal, formatKm } from '../../lib/format.js';
 
-/** Sidebar content for a selected GA park site: the backend's candidate for a new park. */
+/** Sidebar content for a selected recommended site: the backend GA's candidate for a new park. */
 export default function GaSitePanel({ site, sitesInSquare, onClose }) {
   return (
     <div className="space-y-3">
       <PanelHeader
         pill="Candidate · not verified public land"
-        pillColor="#e9d5ff"
-        pillBg="rgb(168 85 247 / 0.2)"
-        title="GA park site"
+        pillColor="#fde68a"
+        pillBg="rgb(252 211 77 / 0.15)"
+        title="Recommended site (GA)"
         subtitle={`1 km square ${site.zone}`}
         onClose={onClose}
       />
@@ -35,8 +35,8 @@ export default function GaSitePanel({ site, sitesInSquare, onClose }) {
             ['Source', 'Backend v3, ga_parks.py'],
           ]}
         />
-        <p className="mt-2 text-xs" style={{ color: COLORS.gaSite }}>
-          ◆ Marked on the map. Check who owns the land before planning a park here.
+        <p className="mt-2 text-xs" style={{ color: COLORS.recommendStar }}>
+          ★ Marked on the map. Check who owns the land before planning a park here.
         </p>
       </Card>
     </div>

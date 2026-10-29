@@ -1,14 +1,14 @@
 import { describe, it, expect } from 'vitest';
-import { starLabel } from './RecommendMarkers.jsx';
+import { recommendLabel } from './RecommendMarkers.jsx';
 
-describe('starLabel', () => {
-  const level = { key: 'good', label: 'Good for planting' };
+describe('recommendLabel', () => {
+  const site = { id: 'r0_c0-1', zone: 'r0_c0', rank: 1, areaM2: 25991.5 };
 
-  it('marks a ★ on an example plot as an example', () => {
-    expect(starLabel({ score: 72, level, isExample: true })).toBe('Example · ★ Recommended · Good for planting · score 72');
+  it('names a ★ as a recommended site from the backend GA, with its rank in its 1 km square and its area', () => {
+    expect(recommendLabel(site, 2)).toBe('★ Recommended site (GA) · rank 1 of 2 in its 1 km square · 25,992 m²');
   });
 
-  it('leaves the example tag off a real detection', () => {
-    expect(starLabel({ score: 72, level, isExample: false })).toBe('★ Recommended · Good for planting · score 72');
+  it('leaves out "of N" when the count is unknown', () => {
+    expect(recommendLabel(site, undefined)).toBe('★ Recommended site (GA) · rank 1 in its 1 km square · 25,992 m²');
   });
 });

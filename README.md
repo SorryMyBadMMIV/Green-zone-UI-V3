@@ -5,8 +5,8 @@ An interactive map for **Green Zone** (GeoHackathon 2026, GISTDA): urban green s
 - **District drop-down:** switch the whole app between Suan Luang and Don Mueang.
 - **Parks and their reach:** every park from the BMA / Rocket Media Lab list, with a circle by size: **S** up to 16,000 m² reaches 500 m, **M** up to 80,000 m² reaches 1 km, **L** up to 160,000 m² reaches 3 km, **XL** reaches 5 km.
 - **Policy:** a 400 m ring around every park. Land outside every ring is shaded: it is not yet within 400 m of a park.
-- **Abandoned land (red) and recommendations (★):** every plot gets a planting score from 0 to 100. The ★ marks plots outside every 400 m ring that score good or very good.
-- **GA park sites (◆):** in Suan Luang, the 85 candidate park sites the backend's genetic algorithm picked from the green it found (not verified public land).
+- **Recommended sites (★):** in Suan Luang, the 85 sites the backend's genetic algorithm (GA) picked from the green it found: big patches, spread out and away from official parks (not verified public land).
+- **Abandoned land (red) and the example plot score (✓):** every example plot gets a planting score from 0 to 100. With "Example plot score" on (off at start), a ✓ marks the plots outside every 400 m ring that score good or very good. This is the frontend's own rule on example data, not a recommendation.
 - **Green groups:** in Suan Luang, circles around groups of green that isn't a park (off at start; isolated green is dashed).
 - **Heat map:** the backend's heat map (green near plants, yellow, then red far from plants).
 - **Green:** Suan Luang shows the green the backend found in the THEOS-2 image. Don Mueang shows the 5 m green/grey grid.
@@ -52,16 +52,17 @@ Don't open `dist/index.html` by double-clicking it, because browsers block apps 
 
 ## How to use the app
 
-- **Map options** (top right): choose the district, tick the park circles (S, M, L, XL), **Policy · 400 m**, **Recommend**, **GA park sites** and **Green groups** (Suan Luang), the layers (heat map, green, abandoned land, and the grid in Don Mueang) and the base map. The – button folds the panel into a small pill.
+- **Map options** (top right): choose the district, tick the park circles (S, M, L, XL), **Policy · 400 m**, **Recommend** and **Green groups** (Suan Luang), **Example plot score**, the layers (heat map, green, abandoned land, and the grid in Don Mueang) and the base map. The – button folds the panel into a small pill.
 - **Click a park dot** to see its size, reach, owner and lists. In Suan Luang it also shows whether the satellite saw green there.
-- **Click a red plot or a ★** to see its planting score in the box on the map and in the sidebar.
-- **Click a ◆ or a green-group circle** to see the backend's numbers for it: area, rank in its 1 km square and nearest official park, or green, patches and circle size.
+- **Click a ★** to see the recommended site's area, its rank in its 1 km square and the nearest official park.
+- **Click a red plot or a ✓** to see its planting score in the box on the map and in the sidebar.
+- **Click a green-group circle** to see its green, patches and circle size.
 - **Sidebar:** the « button minimizes it, and » opens it again. To go back to the overview, press Esc, click ×, or click empty map.
 - **Moving around:** zoom with the + / − buttons, the mouse wheel or a pinch. ⤢ fits the district again.
 
-## The planting score
+## The example plot score
 
-Every abandoned plot gets a score from 0 to 100:
+The recommendations (★) come from the backend's GA. Separately, every example abandoned plot gets the frontend's own planting score from 0 to 100:
 
 - **Distance:** up to 50 points, full at 2 km or more from the nearest park.
 - **Size:** up to 30 points, full at 5,000 m² or more.
@@ -74,7 +75,7 @@ Every abandoned plot gets a score from 0 to 100:
 | 40–59 | Fair for planting |
 | under 40 | Poor for planting |
 
-**Recommended (★)** means outside every 400 m ring **and** a score of 60 or more. Distances are straight-line, not walking distance. The numbers are in `src/lib/constants.js`.
+**Good example plot (✓)** means outside every 400 m ring **and** a score of 60 or more. Distances are straight-line, not walking distance. The numbers are in `src/lib/constants.js`.
 
 ## If it says "Couldn't load zone data"
 
@@ -110,7 +111,7 @@ src/
   lib/backendResults.js   GA sites per 1 km square, green inside the group circles
   lib/geo.js              areas, distances, points in polygons, frame corners
   lib/grid.js             NDVI → green / grey / water cells
-  components/map/         Leaflet map, map options, parks, policy, ★, info box, heat map and image layers
+  components/map/         Leaflet map, map options, parks, policy, ★ GA sites, ✓ example marks, info boxes, heat map and image layers
   components/sidebar/     overview, park panel, green zone panel, abandoned plot panel, cards
   components/charts/      half pie gauge, cooling chart, factor bars, priority bar
   components/ui/          cards, lists, loading and error states
@@ -125,7 +126,7 @@ docs/mock-data/           scripts that made the data files
 
 - **Parks:** the BMA Office of Environment park lists via Rocket Media Lab (CC BY 4.0), with 281 accessible parks and 495 "15-minute" parks. A row is merged into a park only when it is in the same district and has the same name (within 1 km), or, across the two lists, sits within 30 m at a similar size (at most 2× the area). That gives 690 parks. Every merge and the 7 rows with impossible coordinates are listed in `src/data/parks.json` (`metadata.merges`, `metadata.skipped`).
 - **Suan Luang green and heat map:** from backend v3 (the newest `Final_Results/Theosmain/run_*`, THEOS-2 image "Theosmain", 7 km × 6 km). The heat map is made with the backend's own `make_heatmap(style="proximity", radius_m=150)`. The image's position is fitted from the backend's GA sites, which carry UTM coordinates, to about 1 m.
-- **GA park sites and green groups:** the backend's `ga_parks.geojson` and `green_groups.geojson` from the same run, unchanged.
+- **Recommended sites (GA) and green groups:** the backend's `ga_parks.geojson` and `green_groups.geojson` from the same run, unchanged.
 - **Don Mueang:** the NDVI grid, green zones and temperatures are simulated from OpenStreetMap land cover (example data).
 - **Abandoned plots:** **example data** in both districts. Suan Luang's come from OpenStreetMap land use (scrub, meadow, construction, brownfield). Don Mueang's are the earlier simulated grey zones.
 - **How it was made:** see [docs/mock-data/](docs/mock-data/README.md).

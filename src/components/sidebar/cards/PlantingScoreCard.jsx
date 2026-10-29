@@ -12,12 +12,12 @@ const LEVEL_STYLE = {
   poor: { color: '#dc2626', Icon: X },
 };
 
-/** The plot's 0–100 planting score, its level, whether it is recommended, and why. */
+/** The plot's 0–100 planting score, its level, whether it is a good example plot (outside 400 m, 60 or more), and why. */
 export default function PlantingScoreCard({ analysis }) {
   const { score, level, recommended, withinPolicy, nearestPark, circlesCovering } = analysis;
   const { color, Icon } = LEVEL_STYLE[level.key];
   let verdict = 'Outside 400 m, but the score is under 60';
-  if (recommended) verdict = '★ Recommended';
+  if (recommended) verdict = '✓ Good example plot';
   else if (withinPolicy) verdict = 'Inside 400 m of a park';
   return (
     <Card title="Planting score">

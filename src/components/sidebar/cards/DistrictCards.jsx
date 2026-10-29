@@ -43,14 +43,15 @@ export function PolicyCoverageCard({ district, policyShare }) {
   );
 }
 
-/** Number of recommended plots: outside every 400 m ring and good or very good for planting. */
-export function RecommendedCard({ count, counts, fromExamples = false }) {
+/** The frontend's own score on the example plots: how many are outside every 400 m ring and score 60 or more. */
+export function ExampleScoreCard({ count, counts }) {
   return (
-    <Card title="Recommended sites">
-      <p className="text-lg font-semibold text-ink">{`${count} recommended ${count === 1 ? 'site' : 'sites'}`}</p>
+    <Card title="Example plot score">
+      <p className="text-lg font-semibold text-ink">{`${count} good example ${count === 1 ? 'plot' : 'plots'}`}</p>
       <p className="text-sm text-ink-2">{`${counts.veryGood} very good · ${counts.good} good`}</p>
       <p className="mt-1 text-xs text-ink-3">
-        {fromExamples && 'From example plots. '}Abandoned plots outside every 400 m ring that score 60 or more. Marked ★ on the map.
+        Example data: OpenStreetMap plots the frontend scores (outside every 400 m ring and 60 or more). Not the recommendations.
+        Turn on "Example plot score" in Map options to see them as ✓.
       </p>
     </Card>
   );

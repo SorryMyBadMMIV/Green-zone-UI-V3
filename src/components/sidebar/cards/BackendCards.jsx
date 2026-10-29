@@ -4,17 +4,25 @@ import { greenGroupStats, sitesPerSquare } from '../../../lib/backendResults.js'
 
 const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
 
-/** How many candidate park sites the backend's GA picked, and in how many 1 km squares. */
-export function GaSitesCard({ gaSites }) {
+/** The recommended sites: what the backend's genetic algorithm picked, and in how many 1 km squares. */
+export function RecommendedSitesCard({ district, gaSites }) {
+  if (!gaSites) {
+    return (
+      <Card title="Recommended sites">
+        <p className="text-sm text-ink">{`No GA results for ${district.nameEn} yet`}</p>
+        <p className="mt-1 text-xs text-ink-3">The recommended sites come from the backend's genetic algorithm.</p>
+      </Card>
+    );
+  }
   const count = gaSites.features.length;
   const squares = Object.keys(sitesPerSquare(gaSites)).length;
   return (
-    <Card title="GA park sites">
-      <p className="text-lg font-semibold text-ink">{plural(count, 'GA park site', 'GA park sites')}</p>
-      <p className="text-sm text-ink-2">{`in ${plural(squares, 'square', 'squares')} of 1 km`}</p>
+    <Card title="Recommended sites">
+      <p className="text-lg font-semibold text-ink">{plural(count, 'recommended site', 'recommended sites')}</p>
+      <p className="text-sm text-ink-2">{`picked by the backend's genetic algorithm, in ${plural(squares, 'square', 'squares')} of 1 km`}</p>
       <p className="mt-1 text-xs text-ink-3">
-        Candidates the backend's genetic algorithm picked from the green it found: big patches, spread out, away from official
-        parks. Not verified public land. Marked ◆ on the map.
+        Big green patches, spread out and away from official parks. Not verified public land: check who owns the land. Marked ★
+        on the map.
       </p>
     </Card>
   );

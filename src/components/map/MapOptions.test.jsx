@@ -50,18 +50,21 @@ describe('MapOptions', () => {
     expect(screen.getByLabelText('Green/grey grid')).toBeTruthy();
   });
 
-  it('shows GA park sites at start and green groups off at start, in Suan Luang', () => {
+  it('shows the GA sites as Recommend at start, with the example plot score and green groups off, in Suan Luang', () => {
     const { onOptionChange } = renderOptions();
-    expect(screen.getByLabelText('GA park sites').checked).toBe(true);
+    expect(screen.getByLabelText('Recommend').checked).toBe(true);
+    expect(screen.queryByLabelText('GA park sites')).toBeNull();
+    expect(screen.getByLabelText('Example plot score').checked).toBe(false);
     expect(screen.getByLabelText('Green groups').checked).toBe(false);
-    fireEvent.click(screen.getByLabelText('Green groups'));
-    expect(onOptionChange).toHaveBeenCalledWith('greenGroups', true);
+    fireEvent.click(screen.getByLabelText('Example plot score'));
+    expect(onOptionChange).toHaveBeenCalledWith('exampleScore', true);
   });
 
-  it('hides the GA park site and green group switches in Don Mueang, which has neither', () => {
+  it('hides Recommend and green groups in Don Mueang, which has no GA results, but keeps the example plot score', () => {
     renderOptions({ district: getDistrict('don-mueang') });
-    expect(screen.queryByLabelText('GA park sites')).toBeNull();
+    expect(screen.queryByLabelText('Recommend')).toBeNull();
     expect(screen.queryByLabelText('Green groups')).toBeNull();
+    expect(screen.getByLabelText('Example plot score')).toBeTruthy();
   });
 
   it('switches the base map to the street map', () => {

@@ -12,6 +12,7 @@ describe('GaSiteInfoBox', () => {
     expect(screen.getByText('Rank : 1 of 2 in its 1 km square')).toBeTruthy();
     expect(screen.getByText('Nearest official park : 2.3 km')).toBeTruthy();
     expect(screen.getByText('Candidate · not verified public land')).toBeTruthy();
+    expect(screen.getByText('★ Recommended site (GA)')).toBeTruthy();
   });
 
   it('closes from its × button', () => {

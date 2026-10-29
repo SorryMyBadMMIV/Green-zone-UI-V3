@@ -256,9 +256,9 @@ describe('Sidebar', () => {
     expect(screen.getByText(/of Suan Luang is within 400 m of a park/)).toBeTruthy();
     expect(screen.getByText('The policy: a park within 400 m. Straight-line distance, not walking distance.')).toBeTruthy();
     expect(screen.queryByText(/aims for/)).toBeNull();
-    expect(screen.getByText('1 recommended site')).toBeTruthy();
+    expect(screen.getByText('1 good example plot')).toBeTruthy();
     expect(screen.getByText('1 very good · 0 good')).toBeTruthy();
-    expect(screen.getByText(/From example plots/)).toBeTruthy();
+    expect(screen.getByText(/OpenStreetMap plots the frontend scores/)).toBeTruthy();
   });
 
   it('shows a park with its size class, lists and what the satellite saw', () => {
@@ -273,13 +273,13 @@ describe('Sidebar', () => {
     renderSuanLuang({ selected: { kind: 'grey', id: 'SL-T1' } });
     expect(screen.getByText('Abandoned land · example')).toBeTruthy();
     expect(screen.getByText('Very good for planting')).toBeTruthy();
-    expect(screen.getByText('★ Recommended')).toBeTruthy();
+    expect(screen.getByText('✓ Good example plot')).toBeTruthy();
     expect(screen.queryByText('Why this site?')).toBeNull();
   });
 
   it("shows the backend's GA park sites and green groups on the Suan Luang overview", () => {
     renderSuanLuang();
-    expect(screen.getByText('3 GA park sites')).toBeTruthy();
+    expect(screen.getByText('3 recommended sites')).toBeTruthy();
     expect(screen.getByText(/in 2 squares of 1 km/)).toBeTruthy();
     expect(screen.getByText(/Not verified public land/)).toBeTruthy();
     expect(screen.getByText('2 groups · 1 isolated')).toBeTruthy();
@@ -288,7 +288,7 @@ describe('Sidebar', () => {
 
   it('shows a GA park site with its area, its rank in its 1 km square and the nearest official park', () => {
     renderSuanLuang({ selected: { kind: 'ga', id: 'r0_c0-1' } });
-    expect(screen.getByRole('heading', { name: 'GA park site' })).toBeTruthy();
+    expect(screen.getByRole('heading', { name: 'Recommended site (GA)' })).toBeTruthy();
     expect(screen.getByText('Candidate · not verified public land')).toBeTruthy();
     expect(screen.getByText('25,992 m²')).toBeTruthy();
     expect(screen.getByText('1 of 2')).toBeTruthy();
@@ -306,6 +306,11 @@ describe('Sidebar', () => {
   it('calls a lone circle an isolated green patch', () => {
     renderSuanLuang({ selected: { kind: 'group', id: '171' } });
     expect(screen.getByRole('heading', { name: 'Isolated green 171' })).toBeTruthy();
+  });
+
+  it('says Don Mueang has no GA results yet', () => {
+    renderSidebar();
+    expect(screen.getByText('No GA results for Don Mueang yet')).toBeTruthy();
   });
 
   it('minimizes, and when minimized shows only the button that opens it again', () => {

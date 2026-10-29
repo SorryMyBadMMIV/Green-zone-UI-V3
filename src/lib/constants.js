@@ -65,7 +65,6 @@ export const COLORS = {
   abandonedFill: '#dc2626',
   abandonedStroke: '#991b1b',
   recommendStar: '#fcd34d',
-  gaSite: '#a855f7', // backend GA park sites (purple ◆)
   greenGroup: '#2dd4bf', // backend green groups (teal circles)
   focusOutline: '#14532d',
   frameOutline: '#111827',

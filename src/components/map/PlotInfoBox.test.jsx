@@ -20,14 +20,14 @@ describe('PlotInfoBox', () => {
     expect(screen.getByText('Score : 82')).toBeTruthy();
     expect(screen.getByText('Very good for planting')).toBeTruthy();
     expect(screen.getByText('Nearest park : 1.2 km · สวนศรีพัฒน์ภิรมย์')).toBeTruthy();
-    expect(screen.getByText('★ Recommended')).toBeTruthy();
+    expect(screen.getByText('✓ Good example plot')).toBeTruthy();
     expect(screen.getByText('Example data')).toBeTruthy();
   });
 
   it('shows a dash when there is no park nearby and no recommendation line when not recommended', () => {
     render(<PlotInfoBox plot={{ ...plot, isExample: false }} analysis={{ ...analysis, nearestPark: null, recommended: false }} onClose={() => {}} />);
     expect(screen.getByText('Nearest park : —')).toBeTruthy();
-    expect(screen.queryByText('★ Recommended')).toBeNull();
+    expect(screen.queryByText('✓ Good example plot')).toBeNull();
     expect(screen.queryByText('Example data')).toBeNull();
   });
 

@@ -91,7 +91,7 @@ The backend's `park_mark.py` output, reduced to points:
 | `status` | `green_detected`, `no_green_detected` or `outside_image` |
 | `greenM2` | Green found by the satellite near the point |
 
-## GA park site feature (Suan Luang)
+## GA park site feature (Suan Luang): the recommended sites
 
 The backend's `ga_parks/ga_parks.geojson`, sent unchanged: one `Point` per candidate site.
 
@@ -103,7 +103,7 @@ The backend's `ga_parks/ga_parks.geojson`, sent unchanged: one `Point` per candi
 | `dist_nearest_official_m` | Distance to the nearest registered park |
 | `zone_fitness`, `zone_k_max` | The square's GA score and the most parks allowed in it |
 
-The frontend names each site `{zone}-{rank}`, counts the sites per square, and ignores `x_m` / `y_m`. These are candidates, not verified public land, and the app says so.
+The frontend names each site `{zone}-{rank}`, counts the sites per square, and ignores `x_m` / `y_m`. The app shows them as the recommended sites (★, the "Recommend" switch). They are candidates, not verified public land, and the app says so.
 
 ## Green group feature (Suan Luang)
 
@@ -128,7 +128,7 @@ The backend's `green_groups/green_groups.geojson`, sent unchanged. The frontend 
 - **Policy coverage:** the share of the district within 400 m of a park.
 - **Planting score** (0–100) for every abandoned plot: up to 50 points for distance to the nearest park, up to 30 for size, and up to 20 minus 10 for every park circle covering it.
 - **Level:** very good from 80, good from 60, fair from 40, poor below.
-- **Recommendation:** outside every 400 m ring and a score of 60 or more.
+- **Good example plot (✓):** outside every 400 m ring and a score of 60 or more. This is the frontend's own score on the example plots; the recommendations come from the GA sites.
 - **Cell classes and areas in km²** (Don Mueang grid), m² per person and status, priority tiers and "rank N of M".
 - **GA sites per 1 km square** and the **share of the green inside a group circle** (green in the groups ÷ the image's green).
 

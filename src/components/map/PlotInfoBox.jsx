@@ -6,7 +6,7 @@ export default function PlotInfoBox({ plot, analysis, onClose }) {
   const nearest = analysis.nearestPark ? `${formatKm(analysis.nearestPark.distanceM / 1000)} · ${analysis.nearestPark.name}` : DASH;
   const tags = (analysis.recommended || plot.isExample) && (
     <>
-      {analysis.recommended && <span className="rounded-md bg-amber-300 px-2 py-0.5 text-neutral-900">★ Recommended</span>}
+      {analysis.recommended && <span className="rounded-md bg-slate-100 px-2 py-0.5 text-slate-800">✓ Good example plot</span>}
       {plot.isExample && <span className="rounded-md border border-white/40 px-2 py-0.5 text-white/90">Example data</span>}
     </>
   );
