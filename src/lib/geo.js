@@ -94,6 +94,12 @@ export function pointInPolygon(point, geometry) {
   return polygonsOf(geometry).some(([outer, ...holes]) => inRing(point, outer) && !holes.some((hole) => inRing(point, hole)));
 }
 
+/** The point features of a FeatureCollection that lie inside a Polygon or MultiPolygon (null stays null). */
+export function pointsInside(collection, polygon) {
+  if (!collection) return null;
+  return { ...collection, features: collection.features.filter((f) => pointInPolygon(f.geometry.coordinates, polygon)) };
+}
+
 /** [west, south, east, north] of a Polygon or MultiPolygon. */
 export function bboxOf(geometry) {
   const box = [Infinity, Infinity, -Infinity, -Infinity];

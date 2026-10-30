@@ -1,13 +1,11 @@
-// The districts the app can show. Each one has its outline (and grey neighbours), its THEOS-2 image frame, its heat
-// map and which data the backend (or the example files in src/mock/<id>/) provides for it.
-import donMueangBoundaries from './districts/don-mueang.json';
+// The districts the app can show (only Suan Luang for now). Each one has its outline (and grey neighbours), its THEOS-2
+// image frame, its green image and which data the backend (or the example files in src/mock/<id>/) provides for it.
+// `abandoned` is example data from OpenStreetMap until the backend can detect abandoned land.
+// With one district the District drop-down is hidden; adding another entry here brings it back.
 import suanLuangBoundaries from './districts/suan-luang.json';
-import { FRAMES } from './frames.js';
 import suanLuangFrame from '../mock/suan-luang/frame.json';
 import suanLuangSummary from '../mock/suan-luang/summary.json';
-import suanLuangHeatmap from '../mock/suan-luang/heatmap.png';
 import suanLuangGreen from '../mock/suan-luang/green.png';
-import donMueangHeatmap from '../mock/don-mueang/heatmap.png';
 
 export const DISTRICTS = [
   {
@@ -21,28 +19,16 @@ export const DISTRICTS = [
       corners: suanLuangFrame.corners,
       source: 'THEOS-2 (GISTDA), backend v3',
       note: suanLuangFrame.note,
+      // The image's size in metres (from its UTM extent), for the area of a clicked green patch.
+      sizeM: [suanLuangFrame.extent.east - suanLuangFrame.extent.west, suanLuangFrame.extent.north - suanLuangFrame.extent.south],
     },
-    otherFrames: [],
-    images: { heatmap: suanLuangHeatmap, green: suanLuangGreen },
-    data: { grid: false, greenZones: false, parkChecks: true, gaSites: true, greenGroups: true },
-    abandonedIsExample: true,
+    images: { green: suanLuangGreen },
+    data: { abandoned: true, parkChecks: true, gaSites: true, greenGroups: true },
     greenSummary: {
       greenM2: suanLuangSummary.green_area_m2,
       validM2: suanLuangSummary.valid_area_km2 * 1e6,
       patches: suanLuangSummary.patches_kept,
     },
-  },
-  {
-    id: 'don-mueang',
-    nameEn: 'Don Mueang',
-    nameTh: 'ดอนเมือง',
-    boundaries: donMueangBoundaries,
-    frame: { id: FRAMES[0].id, label: FRAMES[0].id, corners: FRAMES[0].corners, source: 'THEOS-2 (GISTDA)', note: null },
-    otherFrames: FRAMES.slice(1),
-    images: { heatmap: donMueangHeatmap, green: null },
-    data: { grid: true, greenZones: true, parkChecks: false, gaSites: false, greenGroups: false },
-    abandonedIsExample: true,
-    greenSummary: null,
   },
 ];
 

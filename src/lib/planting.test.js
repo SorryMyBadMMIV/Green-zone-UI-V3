@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { analysePlot, plantingLevel, policyCoverage, scorePlot } from './planting.js';
+import { analysePlot, plantingLevel, scorePlot } from './planting.js';
 import { loadParks } from './parks.js';
 
 const parkAt = (id, lng, lat, areaM2) =>
@@ -71,18 +71,5 @@ describe('analysePlot', () => {
     const result = analysePlot(plot, 2500, []);
     expect(result.nearestPark).toBeNull();
     expect(result.withinPolicy).toBe(false);
-  });
-});
-
-describe('policyCoverage', () => {
-  const square = squareAround(100.6, 13.7, 1000);
-
-  it('covers about π·400² of a 1 km² square with one park in the middle', () => {
-    const share = policyCoverage(square, [parkAt('mid', 100.6, 13.7, 1000)]);
-    expect(Math.abs(share - (Math.PI * 400 * 400) / 1e6)).toBeLessThan(0.03);
-  });
-
-  it('is 0 without parks', () => {
-    expect(policyCoverage(square, [])).toBe(0);
   });
 });

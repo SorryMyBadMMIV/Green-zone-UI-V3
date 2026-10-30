@@ -2,7 +2,9 @@ import { PARK_SIZE_CLASSES } from './constants.js';
 
 export { PARK_SIZE_CLASSES };
 
-const METRES_PER_DEGREE = 111195; // one degree of latitude on the mean-radius Earth (R = 6371008.8 m)
+/** How far each size class reaches, as text. */
+export const REACH_LABEL = { S: '500 m', M: '1 km', L: '3 km', XL: '5 km' };
+
 const isNum = (value) => typeof value === 'number' && Number.isFinite(value);
 
 /** A park's size class and reach: S up to 16,000 m² (500 m) … XL above 160,000 m² (5 km). null without an area. */
@@ -32,14 +34,4 @@ export function loadParks(collection) {
     });
   }
   return parks;
-}
-
-/** Parks whose reach circle (or, without a size class, the point itself) touches the box [west, south, east, north]. */
-export function parksReaching(parks, [west, south, east, north]) {
-  return parks.filter(({ lngLat: [lng, lat], size }) => {
-    const reach = size?.radiusM ?? 0;
-    const dLat = reach / METRES_PER_DEGREE;
-    const dLng = reach / (METRES_PER_DEGREE * Math.cos((lat * Math.PI) / 180));
-    return lng >= west - dLng && lng <= east + dLng && lat >= south - dLat && lat <= north + dLat;
-  });
 }

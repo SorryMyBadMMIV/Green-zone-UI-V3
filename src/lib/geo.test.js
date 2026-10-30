@@ -1,5 +1,4 @@
 import { describe, it, expect } from 'vitest';
-import { FRAMES } from '../data/frames.js';
 import {
   bboxOf,
   frameCenter,
@@ -10,9 +9,40 @@ import {
   pointInPolygon,
   polygonAreaM2,
   polygonLabelPoint,
+  pointsInside,
   ringAreaM2,
 } from './geo.js';
 
+// Three GISTDA THEOS-2 frames (corners as [lat, lng], exactly as GISTDA gave them), used as known test shapes.
+const FRAMES = [
+  {
+    id: 'gisda_03',
+    corners: {
+      topLeft: [13.9354055, 100.5798814],
+      topRight: [13.9352513, 100.6075171],
+      bottomLeft: [13.90838144, 100.57964238],
+      bottomRight: [13.90820126, 100.60734273],
+    },
+  },
+  {
+    id: 'gisda_01',
+    corners: {
+      topLeft: [13.8809918, 100.5216627],
+      topRight: [13.88081454, 100.54940705],
+      bottomLeft: [13.85388952, 100.52149232],
+      bottomRight: [13.85371826, 100.54922489],
+    },
+  },
+  {
+    id: 'gisda_02',
+    corners: {
+      topLeft: [12.6983554, 100.8833484],
+      topRight: [12.6981904, 100.91086556],
+      bottomLeft: [12.6713797, 100.8831603],
+      bottomRight: [12.6711633, 100.9106389],
+    },
+  },
+];
 const frame = (id) => FRAMES.find((f) => f.id === id);
 const square = (lng, lat, size) => [[lng, lat], [lng + size, lat], [lng + size, lat + size], [lng, lat + size], [lng, lat]];
 
@@ -97,6 +127,13 @@ describe('distances and points in polygons', () => {
   it('puts the label point of an L-shape inside the shape', () => {
     expect(pointInPolygon([100.605, 13.705], lShape)).toBe(false);
     expect(pointInPolygon(polygonLabelPoint(lShape), lShape)).toBe(true);
+  });
+
+  it('keeps only the point features inside a polygon', () => {
+    const point = (id, coordinates) => ({ type: 'Feature', geometry: { type: 'Point', coordinates }, properties: { id } });
+    const result = pointsInside({ type: 'FeatureCollection', features: [point('in', [100.605, 13.705]), point('out', [100.62, 13.705])] }, box);
+    expect(result.features.map((f) => f.properties.id)).toEqual(['in']);
+    expect(pointsInside(null, box)).toBeNull();
   });
 
   it('gives the bounding box of a polygon as [west, south, east, north]', () => {

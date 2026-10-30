@@ -8,7 +8,6 @@ import {
   formatLatLng,
   formatNumber,
   formatPercent,
-  formatTemp,
 } from './format.js';
 
 describe('format', () => {
@@ -24,18 +23,16 @@ describe('format', () => {
       expect(formatArea(value)).toBe(DASH);
       expect(formatKm2(value)).toBe(DASH);
       expect(formatPercent(value)).toBe(DASH);
-      expect(formatTemp(value)).toBe(DASH);
       expect(formatKm(value)).toBe(DASH);
     }
     expect(formatLatLng(null)).toBe(DASH);
     expect(formatLatLng([13.9, null])).toBe(DASH);
   });
 
-  it('formats decimals, areas, temperatures and distances with units', () => {
+  it('formats decimals, areas and distances with units', () => {
     expect(formatDecimal(38.0952, 1)).toBe('38.1');
     expect(formatDecimal(0.3264, 2)).toBe('0.33');
     expect(formatArea(800000)).toBe('800,000 m²');
-    expect(formatTemp(31.24)).toBe('31.2°C');
     expect(formatKm(2.3)).toBe('2.3 km');
   });
 

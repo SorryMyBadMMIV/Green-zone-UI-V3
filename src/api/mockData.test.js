@@ -1,74 +1,22 @@
 import { describe, it, expect } from 'vitest';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { normalizeCollection, normalizeGaSites, normalizeGreenGroups, normalizeGrid } from './data.js';
+import { normalizeAbandoned, normalizeGaSites, normalizeGreenGroups } from './data.js';
 import { pointInPolygon, polygonAreaM2, polygonLabelPoint } from '../lib/geo.js';
+import { loadParks } from '../lib/parks.js';
+import { analyseSites } from '../lib/sites.js';
+import { analyseDistrict } from '../lib/district.js';
 
 // Plain path maths on purpose: Vite rewrites `new URL(`…${x}`, import.meta.url)` into an asset lookup.
 const SRC = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const load = (file) => JSON.parse(readFileSync(path.join(SRC, file), 'utf8'));
 
-const REQUIRED = {
-  green: ['id', 'name', 'district', 'areaM2', 'populationNearby'],
-  grey: ['id', 'district', 'areaM2', 'populationNearby', 'fitness', 'rank'],
-};
-
-describe.each([
-  ['green', 'mock/don-mueang/green-zones.geojson'],
-  ['grey', 'mock/don-mueang/abandoned.geojson'],
-])('Don Mueang mock %s zones follow docs/API.md', (layer, file) => {
-  const raw = load(file);
-  const { features } = normalizeCollection(raw, layer);
-
-  it('keeps every feature (all have an id and polygon geometry)', () => {
-    expect(features.length).toBeGreaterThan(0);
-    expect(features.length).toBe(raw.features.length);
-  });
-
-  it('has every required field', () => {
-    for (const { properties } of features) {
-      for (const key of REQUIRED[layer]) {
-        expect(properties[key], `${properties.id}.${key}`).not.toBeNull();
-      }
+describe('bundled data', () => {
+  it('has no Don Mueang or heat map left', () => {
+    for (const file of ['mock/don-mueang', 'data/districts/don-mueang.json', 'mock/suan-luang/heatmap.png']) {
+      expect(existsSync(path.join(SRC, file)), file).toBe(false);
     }
-  });
-
-  it('has unique ids', () => {
-    const ids = features.map((f) => f.properties.id);
-    expect(new Set(ids).size).toBe(ids.length);
-  });
-});
-
-describe('Don Mueang abandoned plots (today\'s grey zones)', () => {
-  const raw = load('mock/don-mueang/abandoned.geojson');
-  const { features } = normalizeCollection(raw, 'grey');
-
-  it('has ranks 1..N, fitness 0–1 and integer scores 1–5', () => {
-    const ranks = features.map((f) => f.properties.rank).sort((a, b) => a - b);
-    expect(ranks).toEqual(features.map((_, i) => i + 1));
-    for (const { properties: p } of features) {
-      expect(p.fitness).toBeGreaterThanOrEqual(0);
-      expect(p.fitness).toBeLessThanOrEqual(1);
-      for (const score of Object.values(p.scores)) {
-        expect(Number.isInteger(score) && score >= 1 && score <= 5).toBe(true);
-      }
-    }
-  });
-
-  it('is marked as example data', () => {
-    expect(raw.features.every((f) => f.properties.isExample === true)).toBe(true);
-  });
-});
-
-describe('Don Mueang mock NDVI grid of gisda_03', () => {
-  const grid = normalizeGrid(load('mock/don-mueang/grid.json'), 'gisda_03');
-
-  it('is 600 × 600 cells of 5 m with every NDVI value between -1 and 1', () => {
-    expect([grid.rows, grid.cols, grid.cellSizeM]).toEqual([600, 600, 5]);
-    const values = grid.ndvi.flat();
-    expect(values).toHaveLength(360000);
-    expect(values.every((v) => v !== null && v >= -1 && v <= 1)).toBe(true);
   });
 });
 
@@ -102,9 +50,9 @@ describe('Suan Luang data', () => {
     expect(Math.max(...lngs)).toBeLessThan(100.68);
   });
 
-  it('has at least 5 example abandoned plots inside the district and the frame', () => {
+  it('has at least 5 example abandoned plots inside the district and the image', () => {
     const raw = load('mock/suan-luang/abandoned.geojson');
-    const { features } = normalizeCollection(raw, 'grey');
+    const { features } = normalizeAbandoned(raw);
     expect(features.length).toBeGreaterThanOrEqual(5);
     expect(features.length).toBe(raw.features.length);
     expect(new Set(features.map((f) => f.properties.id)).size).toBe(features.length);
@@ -119,6 +67,12 @@ describe('Suan Luang data', () => {
       expect(lng).toBeGreaterThanOrEqual(Math.min(...lngs));
       expect(lng).toBeLessThanOrEqual(Math.max(...lngs));
     }
+  });
+
+  it('leaves out plots the satellite photo shows are built up (SL-006 "Park Heritage 20" is now housing)', () => {
+    const plots = load('mock/suan-luang/abandoned.geojson').features;
+    expect(plots.map((f) => f.properties.id)).not.toContain('SL-006');
+    expect(plots.map((f) => f.properties.name)).not.toContain('Park Heritage 20');
   });
 
   it('has the 11 parks the backend checked against the image', () => {
@@ -149,6 +103,15 @@ describe('Suan Luang data', () => {
       expect(lng).toBeGreaterThanOrEqual(Math.min(...lngs));
       expect(lng).toBeLessThanOrEqual(Math.max(...lngs));
     }
+  });
+
+  it('keeps 14 recommended sites inside Suan Luang: 40 lie outside, 5 are less than 400 m from a park, 3 inside an S circle, 23 too close to a better one', () => {
+    const { parks } = analyseDistrict({ focus: focus[0].geometry, parks: loadParks(load('data/parks.json')) });
+    const result = analyseSites(normalizeGaSites(load('mock/suan-luang/ga-sites.geojson')), parks, focus[0].geometry);
+    expect(result.keptIds).toHaveLength(14);
+    expect(result.outside).toBe(40);
+    expect(result.removed).toEqual({ total: 31, within400: 5, barrier: 3, tooClose: 23 });
+    for (const id of result.keptIds) expect(['S', 'M']).toContain(result.sites[id].size.key);
   });
 
   it("has the backend's 271 green-group circles: 170 groups and 101 isolated", () => {

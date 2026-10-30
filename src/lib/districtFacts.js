@@ -9,3 +9,8 @@ export function districtFacts(districtTh) {
   if (!facts) return null;
   return { ...facts, rank: RANKED.indexOf(facts) + 1, of: FACTS.length };
 }
+
+/** Public green space per person (m²): the district's green now, plus `addedM2` (for example new parks). */
+export function greenPerPerson(facts, addedM2 = 0) {
+  return (facts.greenM2 + addedM2) / facts.population;
+}

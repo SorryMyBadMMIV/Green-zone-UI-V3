@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { COLORS, GREEN_NDVI } from '../../lib/constants.js';
+import { COLORS } from '../../lib/constants.js';
 import { PARK_COLORS } from './ParkLayers.jsx';
 
 function Swatch({ color, outline = false, dashed = false, round = false }) {
@@ -53,38 +53,40 @@ export default function MapLegend({ district }) {
         <Swatch color={COLORS.policyShade} />
         Not within 400 m
       </Row>
-      <p className="mb-1 mt-2 font-semibold">Land</p>
-      <Row>
-        <Swatch color={COLORS.abandonedFill} />
-        Abandoned land
-      </Row>
-      <Row>
-        <span className="flex size-4 shrink-0 items-center justify-center rounded-full border border-slate-600 bg-slate-50 text-[9px] font-bold text-slate-700" aria-hidden="true">
-          ✓
-        </span>
-        Good example plot (off at start)
-      </Row>
-      <Row>
-        <Swatch color={COLORS.gridGreen} />
-        Green ({GREEN_NDVI} and up)
-      </Row>
-      <Row>
-        <Swatch color={COLORS.gridGrey} />
-        Grey (under {GREEN_NDVI})
-      </Row>
-      <Row>
-        <Swatch color={COLORS.greenZoneStroke} outline />
-        Green zone
-      </Row>
-      {(district?.data.gaSites || district?.data.greenGroups) && <p className="mb-1 mt-2 font-semibold">Backend results</p>}
+      {district?.data.abandoned && (
+        <>
+          <p className="mb-1 mt-2 font-semibold">Abandoned land (example)</p>
+          <Row>
+            <Swatch color={COLORS.abandonedFill} />
+            Plot from OpenStreetMap
+          </Row>
+          <Row>
+            <span className="flex size-4 shrink-0 items-center justify-center rounded-full border border-slate-600 bg-slate-50 text-[9px] font-bold text-slate-700" aria-hidden="true">
+              ✓
+            </span>
+            Good example plot (off at start)
+          </Row>
+        </>
+      )}
+      <p className="mb-1 mt-2 font-semibold">Backend results</p>
       {district?.data.gaSites && (
         <Row>
           <span className="flex size-4 shrink-0 items-center justify-center rounded-full bg-neutral-900 text-[10px] text-amber-300" aria-hidden="true">
             ★
           </span>
-          Recommended site (GA)
+          Recommended site (GA, or added by the app)
         </Row>
       )}
+      {district?.data.gaSites && (
+        <Row>
+          <Swatch color={COLORS.recommendStar} outline dashed round />
+          Its reach as a park (click a ★, or ★ reach circles)
+        </Row>
+      )}
+      <Row>
+        <Swatch color={COLORS.greenImage} />
+        Green in the image (zoom in, then click a patch)
+      </Row>
       {district?.data.greenGroups && (
         <Row>
           <Swatch color={COLORS.greenGroup} outline round />
@@ -93,15 +95,9 @@ export default function MapLegend({ district }) {
           Isolated green
         </Row>
       )}
-      <p className="mb-1 mt-2 font-semibold">Heat map</p>
-      <span className="block h-2 w-full rounded-sm" style={{ background: 'linear-gradient(90deg, #00b441, #ffe128, #eb2d23)' }} aria-hidden="true" />
-      <p className="mt-0.5 flex justify-between gap-4">
-        <span>Near plants</span>
-        <span>Far (150 m+)</span>
-      </p>
       <Row>
         <Swatch color={COLORS.mask} />
-        Update soon
+        Other districts: update soon
       </Row>
     </details>
   );

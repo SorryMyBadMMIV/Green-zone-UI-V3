@@ -7,17 +7,18 @@ export function sitesPerSquare(gaSites) {
   return counts;
 }
 
-/**
- * Green groups (solid circles), isolated circles (dashed) and the share of all green that lies in their circles.
- * greenM2 = all green in the image (null when unknown, then share is null).
- */
-export function greenGroupStats(greenGroups, greenM2) {
+/** How many green groups (solid circles) and isolated green circles (dashed). */
+export function greenGroupStats(greenGroups) {
   const features = greenGroups?.features ?? [];
-  const greenM2InCircles = features.reduce((sum, f) => sum + (f.properties.greenM2InGroup ?? 0), 0);
   return {
     groups: features.filter((f) => f.properties.kind === 'group').length,
     isolated: features.filter((f) => f.properties.kind === 'isolated').length,
-    greenM2InCircles,
-    share: greenM2 > 0 ? greenM2InCircles / greenM2 : null,
   };
+}
+
+/** Total area (m²) of the recommended sites shown: the kept GA sites plus the sites the app added in the gaps. */
+export function recommendedAreaM2(gaSites, siteAnalysis, addedSites) {
+  const kept = new Set(siteAnalysis?.keptIds ?? []);
+  const ga = (gaSites?.features ?? []).filter((f) => kept.has(f.properties.id)).reduce((sum, f) => sum + (f.properties.areaM2 ?? 0), 0);
+  return ga + (addedSites ?? []).reduce((sum, s) => sum + (s.areaM2 ?? 0), 0);
 }

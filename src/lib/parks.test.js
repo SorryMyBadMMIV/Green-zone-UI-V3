@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { loadParks, parksReaching, sizeClass } from './parks.js';
+import { loadParks, sizeClass } from './parks.js';
 
 const point = (id, lng, lat, areaM2) => ({
   type: 'Feature',
@@ -46,22 +46,5 @@ describe('loadParks', () => {
   it('skips a feature without point coordinates', () => {
     const broken = { type: 'Feature', geometry: null, properties: { id: 'x', name: 'x', areaM2: 10 } };
     expect(loadParks({ type: 'FeatureCollection', features: [broken, point('p2', 100.6, 13.7, 10)] })).toHaveLength(1);
-  });
-});
-
-describe('parksReaching', () => {
-  // A box about 1 km across around (100.64, 13.73).
-  const box = [100.635, 13.725, 100.645, 13.735];
-  const parks = loadParks({
-    type: 'FeatureCollection',
-    features: [
-      point('xl-east', 100.645 + 4000 / (111195 * Math.cos((13.73 * Math.PI) / 180)), 13.73, 200000),
-      point('s-far', 100.645 + 600 / (111195 * Math.cos((13.73 * Math.PI) / 180)), 13.73, 1000),
-      point('s-inside', 100.64, 13.73, 1000),
-    ],
-  });
-
-  it('keeps parks whose circle reaches the box and drops the rest', () => {
-    expect(parksReaching(parks, box).map((p) => p.id)).toEqual(['xl-east', 's-inside']);
   });
 });

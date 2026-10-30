@@ -1,6 +1,6 @@
 // One-off: download a district (an OSM admin_level boundary relation) and its neighbouring districts from the
 // OpenStreetMap API (v0.6).
-// Usage: node fetch-district.mjs --relation 1639287 --out district-raw.json          (Don Mueang)
+// Usage: node fetch-district.mjs --relation 3146643 --out suan-luang-district-raw.json   (Suan Luang)
 //        node fetch-district.mjs --name "Suan Luang District, Bangkok" --out suan-luang-district-raw.json
 // --name looks the relation up with Nominatim first.
 import fs from 'node:fs';

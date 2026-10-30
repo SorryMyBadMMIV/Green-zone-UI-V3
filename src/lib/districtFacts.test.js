@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { districtFacts } from './districtFacts.js';
+import { districtFacts, greenPerPerson } from './districtFacts.js';
 
 describe('districtFacts', () => {
   it('gives Suan Luang its population and green space per person', () => {
@@ -23,5 +23,13 @@ describe('districtFacts', () => {
 
   it('returns null for an unknown district', () => {
     expect(districtFacts('ไม่มี')).toBeNull();
+  });
+});
+
+describe('greenPerPerson', () => {
+  it("gives Suan Luang's green per person now (6.09 m²) and with more green added", () => {
+    const facts = districtFacts('สวนหลวง');
+    expect(greenPerPerson(facts)).toBeCloseTo(6.09, 2);
+    expect(greenPerPerson(facts, 123291)).toBeCloseTo(7.09, 2);
   });
 });

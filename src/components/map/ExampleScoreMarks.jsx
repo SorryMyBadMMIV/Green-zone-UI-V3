@@ -22,7 +22,7 @@ export default function ExampleScoreMarks({ analysis, onSelect }) {
         icon={CHECK}
         keyboard={false}
         bubblingMouseEvents={false}
-        eventHandlers={{ click: () => onSelect({ kind: 'grey', id }) }}
+        eventHandlers={{ click: () => onSelect({ kind: 'plot', id }) }}
       >
         <Tooltip direction="top" offset={[0, -8]}>
           {exampleMarkLabel(plot)}

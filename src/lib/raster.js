@@ -10,16 +10,3 @@ export function affineFromPoints([[x0, y0], [x1, y1], [x2, y2]], [[u0, v0], [u1,
   const d = ((v2 - v0) * (x1 - x0) - (v1 - v0) * (x2 - x0)) / det;
   return [a, b, c, d, u0 - a * x0 - c * y0, v0 - b * x0 - d * y0];
 }
-
-/** "#22c55e" → [34, 197, 94] */
-export function hexToRgb(hex) {
-  const n = Number.parseInt(hex.slice(1), 16);
-  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
-}
-
-/** RGBA pixels (4 bytes per cell, row by row) for the class codes, with palette[code] = [r, g, b, a]. */
-export function paintClasses({ rows, cols, classes }, palette) {
-  const pixels = new Uint8ClampedArray(rows * cols * 4);
-  for (let i = 0; i < rows * cols; i++) pixels.set(palette[classes[i]], i * 4);
-  return pixels;
-}

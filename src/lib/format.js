@@ -39,11 +39,6 @@ export function formatLatLng(latLng) {
     : DASH;
 }
 
-/** 31.24 → "31.2°C" */
-export function formatTemp(valueC) {
-  return isNum(valueC) ? `${valueC.toFixed(1)}°C` : DASH;
-}
-
 /** 2.3 → "2.3 km" */
 export function formatKm(valueKm) {
   return isNum(valueKm) ? `${valueKm.toFixed(1)} km` : DASH;

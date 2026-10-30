@@ -1,15 +1,15 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { GeoJSON, MapContainer, Marker, Pane, TileLayer, useMapEvents } from 'react-leaflet';
+import { Circle, GeoJSON, MapContainer, Marker, Pane, TileLayer, Tooltip, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import { LoaderCircle, Maximize, Minus, Plus } from 'lucide-react';
 import { BASEMAPS, MAP_DEFAULTS } from '../../config.js';
-import { sitesPerSquare } from '../../lib/backendResults.js';
-import { COLORS } from '../../lib/constants.js';
+import { COLORS, GREEN_CLICK_MIN_ZOOM } from '../../lib/constants.js';
+import { REACH_LABEL } from '../../lib/parks.js';
 import { formatKm2 } from '../../lib/format.js';
-import { frameCenter, frameRing, maskPolygon, polygonAreaM2 } from '../../lib/geo.js';
-import ClassifiedGridLayer from './ClassifiedGridLayer.jsx';
-import FrameImageLayer from './FrameImageLayer.jsx';
+import { frameRing, maskPolygon, pointInPolygon, polygonAreaM2 } from '../../lib/geo.js';
+import { describePatch, frameUV, patchAt, patchPixels } from '../../lib/greenMask.js';
 import ExampleScoreMarks from './ExampleScoreMarks.jsx';
+import FrameImageLayer from './FrameImageLayer.jsx';
 import GreenGroupLayer from './GreenGroupLayer.jsx';
 import MapLegend from './MapLegend.jsx';
 import MapOptions from './MapOptions.jsx';
@@ -17,11 +17,11 @@ import ParkLayers from './ParkLayers.jsx';
 import PlotInfoBox from './PlotInfoBox.jsx';
 import PolicyLayer from './PolicyLayer.jsx';
 import RecommendMarkers from './RecommendMarkers.jsx';
-import { GaSiteInfoBox, GreenGroupInfoBox } from './SiteInfoBoxes.jsx';
+import { GaSiteInfoBox, GreenGroupInfoBox, PatchInfoBox } from './SiteInfoBoxes.jsx';
 
 const FIT_OPTIONS = { padding: [24, 24] };
 
-// ---- The focus district, its grey neighbours and its image frames ----
+// ---- The focus district, its grey neighbours and its image frame ----
 const escapeHtml = (text) =>
   String(text).replace(/[&<>"]/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[ch]);
 const labelIcon = (html, className = '') =>
@@ -29,20 +29,15 @@ const labelIcon = (html, className = '') =>
 const SOON = '<small>Update soon</small>';
 
 const VIEWS = new WeakMap();
-/** Everything the map draws for a district that never changes: outline, mask, frames and labels. */
+/** Everything the map draws for a district that never changes: outline, mask, image frame and labels. */
 function districtView(district) {
   if (VIEWS.has(district)) return VIEWS.get(district);
   const { features, metadata } = district.boundaries;
   const focus = features.find((f) => f.properties.role === 'focus');
   const neighbours = features.filter((f) => f.properties.role === 'soon');
   const [west, south, east, north] = metadata.viewBounds;
-  const frames = [
-    { id: district.frame.id, label: district.frame.label, corners: district.frame.corners, ready: true },
-    ...district.otherFrames.map((frame) => ({ id: frame.id, label: frame.id, corners: frame.corners, ready: false })),
-  ].map((frame) => {
-    const geometry = { type: 'Polygon', coordinates: [frameRing(frame.corners)] };
-    return { ...frame, geometry, areaM2: polygonAreaM2(geometry) };
-  });
+  const frameGeometry = { type: 'Polygon', coordinates: [frameRing(district.frame.corners)] };
+  const frame = { ...district.frame, geometry: frameGeometry, areaM2: polygonAreaM2(frameGeometry) };
   const view = {
     focus,
     neighbours,
@@ -50,25 +45,21 @@ function districtView(district) {
     focusBounds: L.geoJSON(focus).getBounds(),
     // The grey "update soon" cover reaches far past the view, so panning never shows its edge.
     mask: maskPolygon(focus.geometry, [west - 1, south - 1, east + 1, north + 1]),
-    frames,
+    frame,
     labels: [
       ...neighbours.map(({ properties: p }) => ({
         id: p.id,
         position: [p.label[1], p.label[0]],
         icon: labelIcon(`${escapeHtml(p.nameEn)} · ${escapeHtml(p.nameTh)}${SOON}`),
       })),
-      ...frames.map((frame) =>
-        frame.ready
-          ? { id: frame.id, position: frame.corners.topLeft, icon: labelIcon(`${escapeHtml(frame.label)} · ${formatKm2(frame.areaM2)}`, 'frame-label') }
-          : { id: frame.id, position: frameCenter(frame.corners), icon: labelIcon(`${escapeHtml(frame.label)}${SOON}`) },
-      ),
+      { id: frame.id, position: frame.corners.topLeft, icon: labelIcon(`${escapeHtml(frame.label)} · ${formatKm2(frame.areaM2)}`, 'frame-label') },
     ],
   };
   VIEWS.set(district, view);
   return view;
 }
 
-/** Grey cover outside the district, neighbour outlines, the district outline, frames and labels. */
+/** Grey cover outside the district, neighbour outlines, the district outline, the image frame and labels. */
 const FocusLayers = memo(function FocusLayers({ view }) {
   return (
     <>
@@ -84,14 +75,7 @@ const FocusLayers = memo(function FocusLayers({ view }) {
         ))}
       </Pane>
       <GeoJSON data={view.focus} style={{ color: COLORS.focusOutline, weight: 3, fill: false }} interactive={false} />
-      {view.frames.map((frame) => (
-        <GeoJSON
-          key={frame.id}
-          data={frame.geometry}
-          interactive={false}
-          style={frame.ready ? { color: COLORS.frameOutline, weight: 2, fill: false } : { color: '#ffffff', weight: 2, dashArray: '6 6', fill: false }}
-        />
-      ))}
+      <GeoJSON data={view.frame.geometry} interactive={false} style={{ color: COLORS.frameOutline, weight: 2, fill: false }} />
       <Pane name="labels" style={{ zIndex: 450 }}>
         {view.labels.map((label) => (
           <Marker key={label.id} position={label.position} icon={label.icon} interactive={false} keyboard={false} />
@@ -101,27 +85,19 @@ const FocusLayers = memo(function FocusLayers({ view }) {
   );
 });
 
-// ---- Zones ----
-const isSelected = (selected, kind, id) => selected?.kind === kind && selected.id === id;
+// ---- Abandoned plots (red, example data) ----
+const plotStyle = (isSelected) => ({
+  color: isSelected ? COLORS.selected : COLORS.abandonedStroke,
+  weight: isSelected ? 3 : 2,
+  fillColor: COLORS.abandonedFill,
+  fillOpacity: 0.5,
+});
 
-// Abandoned plots are named by their planting level, for example "Example plot · Good for planting".
-const zoneLabel = (kind, p, plotLevel) =>
-  kind === 'green' ? p.name : `${p.isExample ? 'Example plot' : `Plot ${p.id}`}${plotLevel ? ` · ${plotLevel.label}` : ''}`;
-
-function zoneStyle(kind, p, selected) {
-  let base;
-  if (kind === 'green') {
-    base = { color: COLORS.greenZoneStroke, fillColor: COLORS.greenZoneFill, fillOpacity: 0.12 };
-  } else {
-    base = { color: COLORS.abandonedStroke, fillColor: COLORS.abandonedFill, fillOpacity: 0.5 };
-  }
-  return isSelected(selected, kind, p.id) ? { ...base, color: COLORS.selected, weight: 3 } : { ...base, weight: 2 };
-}
-
-/** One layer of zone shapes. Styles update in place when the selection changes. */
-function ZoneShapes({ kind, data, selected, onSelect, plots = null }) {
+/** The red example plots, named by their planting level. Styles update in place when the selection changes. */
+function PlotShapes({ data, plots, selected, onSelect }) {
   const layerRef = useRef(null);
   const latest = useRef({ selected, onSelect });
+  const isSelected = (current, id) => current?.kind === 'plot' && current.id === id;
 
   useEffect(() => {
     latest.current = { selected, onSelect };
@@ -129,28 +105,42 @@ function ZoneShapes({ kind, data, selected, onSelect, plots = null }) {
 
   useEffect(() => {
     layerRef.current?.eachLayer((layer) => {
-      const p = layer.feature.properties;
-      layer.setStyle(zoneStyle(kind, p, selected));
-      if (isSelected(selected, kind, p.id)) layer.bringToFront();
+      const on = isSelected(selected, layer.feature.properties.id);
+      layer.setStyle(plotStyle(on));
+      if (on) layer.bringToFront();
     });
-  }, [kind, selected]);
+  }, [selected]);
 
-  const style = useCallback((feature) => zoneStyle(kind, feature.properties, latest.current.selected), [kind]);
+  const style = useCallback((feature) => plotStyle(isSelected(latest.current.selected, feature.properties.id)), []);
 
   const onEachFeature = useCallback(
     (feature, layer) => {
       const p = feature.properties;
-      layer.bindTooltip(zoneLabel(kind, p, plots?.[p.id]?.level), { sticky: true, direction: 'top' });
+      const level = plots?.[p.id]?.level;
+      layer.bindTooltip(`${p.isExample ? 'Example plot' : `Plot ${p.id}`}${level ? ` · ${level.label}` : ''}`, { sticky: true, direction: 'top' });
       layer.on({
-        click: () => latest.current.onSelect({ kind, id: p.id }),
+        click: () => latest.current.onSelect({ kind: 'plot', id: p.id }),
         mouseover: () => layer.setStyle({ weight: 3.5 }),
-        mouseout: () => layer.setStyle(zoneStyle(kind, p, latest.current.selected)),
+        mouseout: () => layer.setStyle(plotStyle(isSelected(latest.current.selected, p.id))),
       });
     },
-    [kind, plots],
+    [plots],
   );
 
   return <GeoJSON ref={layerRef} data={data} style={style} onEachFeature={onEachFeature} bubblingMouseEvents={false} />;
+}
+
+// ---- Clicked green patches ----
+const PATCH_HIGHLIGHT_RGBA = [255, 255, 255, 230];
+
+/** A canvas with only the patch's pixels painted white, the size of its box. */
+function patchCanvas(rawPatch, width) {
+  const [c0, r0, c1, r1] = rawPatch.bbox;
+  const canvas = document.createElement('canvas');
+  canvas.width = c1 - c0 + 1;
+  canvas.height = r1 - r0 + 1;
+  canvas.getContext('2d').putImageData(new ImageData(patchPixels(rawPatch, width, PATCH_HIGHLIGHT_RGBA), canvas.width, canvas.height), 0, 0);
+  return canvas;
 }
 
 // ---- Map behaviour and controls ----
@@ -160,11 +150,11 @@ function updateMinZoom(map, focusBounds) {
   if (size.x > 0 && size.y > 0) map.setMinZoom(Math.max(MAP_DEFAULTS.minZoom, map.getBoundsZoom(focusBounds) - 0.75));
 }
 
-/** Fits the district once the map has a real size and again when the district changes; clears on empty clicks. */
-function MapEvents({ view, onReady, onEmptyClick }) {
+/** Fits the district once the map has a real size and again when the district changes; reports clicks on the map. */
+function MapEvents({ view, onReady, onMapClick }) {
   const latestView = useRef(view);
   const map = useMapEvents({
-    click: () => onEmptyClick(),
+    click: (event) => onMapClick(event.latlng, map.getZoom()),
     resize: () => updateMinZoom(map, latestView.current.focusBounds),
   });
   useEffect(() => {
@@ -216,9 +206,9 @@ function MapButtons({ map, onReset }) {
 }
 
 /**
- * The interactive map of one district: satellite or street base map, the grey cover outside the district, the heat
- * map, the green layer (NDVI grid or backend green image), zones, the backend's GA sites and green groups, controls and
- * legend.
+ * The interactive map of one district: satellite or street base map, the grey cover outside the district, the
+ * backend's green image, the red example plots, parks and their circles, the 400 m policy, the backend's GA sites (★)
+ * and green groups, controls and legend.
  */
 export default function ZoneMap({
   district,
@@ -228,11 +218,13 @@ export default function ZoneMap({
   onOptionChange,
   optionsCollapsed,
   onOptionsCollapsedChange,
-  green,
-  grey,
+  abandoned,
   gaSites,
+  siteAnalysis,
+  addedSites,
+  greenMask,
+  patchAnalysis,
   greenGroups,
-  classified,
   analysis,
   version,
   selected,
@@ -245,10 +237,32 @@ export default function ZoneMap({
   const [initialView] = useState(view);
   const resetView = useCallback(() => map?.fitBounds(view.focusBounds, FIT_OPTIONS), [map, view]);
   const basemap = BASEMAPS[options.basemap] ?? BASEMAPS.satellite;
-  const selectedPlot = selected?.kind === 'grey' ? grey?.features.find((f) => f.properties.id === selected.id)?.properties : null;
-  const selectedAnalysis = selectedPlot ? analysis?.plots[selectedPlot.id] : null;
-  const sitesInSquare = useMemo(() => sitesPerSquare(gaSites), [gaSites]);
-  const selectedSite = selected?.kind === 'ga' ? gaSites?.features.find((f) => f.properties.id === selected.id)?.properties : null;
+  const selectedPlot = selected?.kind === 'plot' ? abandoned?.features.find((f) => f.properties.id === selected.id)?.properties : null;
+  const selectedPlotAnalysis = selectedPlot ? analysis.plots[selectedPlot.id] : null;
+  const selectedSiteFeature = selected?.kind === 'ga' ? gaSites?.features.find((f) => f.properties.id === selected.id) : null;
+  const selectedSite = selectedSiteFeature?.properties ?? null;
+  const selectedSiteAnalysis = selectedSite ? siteAnalysis?.sites[selectedSite.id] : null;
+  const selectedAdded = selected?.kind === 'added' ? addedSites?.find((s) => s.id === selected.id) ?? null : null;
+  const selectedPatch = selected?.kind === 'patch' ? selected.patch : null;
+
+  // A click on a green patch (zoomed in, inside the district, green layer on) selects it; any other empty click clears.
+  const handleMapClick = useCallback(
+    (latlng, zoom) => {
+      const point = [latlng.lng, latlng.lat];
+      if (greenMask && options.green && zoom >= GREEN_CLICK_MIN_ZOOM && pointInPolygon(point, view.focus.geometry)) {
+        const uv = frameUV(district.frame.corners, point);
+        const { mask, width, height } = greenMask;
+        const raw = uv && patchAt(mask, width, height, Math.floor(uv[0] * width), Math.floor(uv[1] * height));
+        if (raw) {
+          const patch = { ...describePatch(raw, width, height, district.frame), highlight: patchCanvas(raw, width) };
+          onSelect({ kind: 'patch', id: patch.id, patch });
+          return;
+        }
+      }
+      onClear();
+    },
+    [greenMask, options.green, view, district, onSelect, onClear],
+  );
   const selectedGroup = selected?.kind === 'group' ? greenGroups?.features.find((f) => f.properties.id === selected.id)?.properties : null;
 
   return (
@@ -272,24 +286,16 @@ export default function ZoneMap({
           maxZoom={basemap.maxZoom}
           className={`basemap-${options.basemap}`}
         />
-        <MapEvents view={view} onReady={setMap} onEmptyClick={onClear} />
+        <MapEvents view={view} onReady={setMap} onMapClick={handleMapClick} />
         <FocusLayers view={view} />
-        <Pane name="heat" style={{ zIndex: 380 }}>
-          {options.heatmap && (
-            <FrameImageLayer key={`heat-${district.id}`} corners={district.frame.corners} source={district.images.heatmap} pane="heat" opacity={0.7} smooth />
+        {/* Under the grey cover (mask, 350), so the green outside the district is dimmed like the rest of it. */}
+        <Pane name="green" style={{ zIndex: 345 }}>
+          {options.green && (
+            <FrameImageLayer key={`green-${district.id}`} corners={district.frame.corners} source={district.images.green} pane="green" />
           )}
         </Pane>
-        <Pane name="grid" style={{ zIndex: 390 }}>
-          {district.data.grid && options.grid && classified && <ClassifiedGridLayer frame={district.frame} classified={classified} pane="grid" />}
-          {district.images.green && options.green && (
-            <FrameImageLayer key={`green-${district.id}`} corners={district.frame.corners} source={district.images.green} pane="grid" />
-          )}
-        </Pane>
-        {options.green && green && (
-          <ZoneShapes key={`green-${district.id}-${version}`} kind="green" data={green} selected={selected} onSelect={onSelect} />
-        )}
-        {options.abandoned && grey && (
-          <ZoneShapes key={`grey-${district.id}-${version}`} kind="grey" data={grey} selected={selected} onSelect={onSelect} plots={analysis?.plots} />
+        {options.abandoned && abandoned && (
+          <PlotShapes key={`plots-${district.id}-${version}`} data={abandoned} plots={analysis.plots} selected={selected} onSelect={onSelect} />
         )}
         <Pane name="policy" style={{ zIndex: 385 }}>
           {options.policy && analysis && <PolicyLayer key={district.id} focus={view.focus.geometry} parks={analysis.parks} pane="policy" />}
@@ -298,8 +304,71 @@ export default function ZoneMap({
         <Pane name="groups" style={{ zIndex: 395 }}>
           {options.greenGroups && greenGroups && <GreenGroupLayer greenGroups={greenGroups} selected={selected} onSelect={onSelect} />}
         </Pane>
-        {options.exampleScore && options.abandoned && analysis && <ExampleScoreMarks analysis={analysis} onSelect={onSelect} />}
-        {options.recommend && gaSites && <RecommendMarkers gaSites={gaSites} sitesInSquare={sitesInSquare} selected={selected} onSelect={onSelect} />}
+        {options.exampleScore && options.abandoned && <ExampleScoreMarks analysis={analysis} onSelect={onSelect} />}
+        <Pane name="siteReach" style={{ zIndex: 396 }}>
+          {options.recommend &&
+            options.siteCircles &&
+            siteAnalysis &&
+            gaSites?.features
+              .filter((f) => siteAnalysis.keptIds.includes(f.properties.id) && siteAnalysis.sites[f.properties.id].size)
+              .map((f) => (
+                <Circle
+                  key={`all-${f.properties.id}`}
+                  center={[f.geometry.coordinates[1], f.geometry.coordinates[0]]}
+                  radius={siteAnalysis.sites[f.properties.id].size.radiusM}
+                  pathOptions={{ color: COLORS.recommendStar, weight: 1.5, dashArray: '8 6', fillColor: COLORS.recommendStar, fillOpacity: 0.05 }}
+                  interactive={false}
+                />
+              ))}
+          {options.recommend &&
+            options.siteCircles &&
+            (addedSites ?? []).map((s) => (
+              <Circle
+                key={`all-${s.id}`}
+                center={[s.lngLat[1], s.lngLat[0]]}
+                radius={s.analysis.size.radiusM}
+                pathOptions={{ color: COLORS.recommendStar, weight: 1.5, dashArray: '8 6', fillColor: COLORS.recommendStar, fillOpacity: 0.05 }}
+                interactive={false}
+              />
+            ))}
+          {selectedAdded && (
+            <Circle
+              key={selectedAdded.id}
+              center={[selectedAdded.lngLat[1], selectedAdded.lngLat[0]]}
+              radius={selectedAdded.analysis.size.radiusM}
+              pathOptions={{ color: COLORS.recommendStar, weight: 2.5, dashArray: '8 6', fillColor: COLORS.recommendStar, fillOpacity: 0.08 }}
+              interactive={false}
+            >
+              <Tooltip permanent direction="top">{`${selectedAdded.analysis.size.key} · would reach ${REACH_LABEL[selectedAdded.analysis.size.key]}`}</Tooltip>
+            </Circle>
+          )}
+          {selectedPatch && patchAnalysis?.size && (
+            <Circle
+              key={selectedPatch.id}
+              center={[selectedPatch.lngLat[1], selectedPatch.lngLat[0]]}
+              radius={patchAnalysis.size.radiusM}
+              pathOptions={{ color: '#ffffff', weight: 2.5, dashArray: '8 6', fillColor: '#ffffff', fillOpacity: 0.06 }}
+              interactive={false}
+            >
+              <Tooltip permanent direction="top">{`${patchAnalysis.size.key} · would reach ${REACH_LABEL[patchAnalysis.size.key]}`}</Tooltip>
+            </Circle>
+          )}
+          {selectedSiteAnalysis?.size && (
+            <Circle
+              key={selectedSite.id}
+              center={[selectedSiteFeature.geometry.coordinates[1], selectedSiteFeature.geometry.coordinates[0]]}
+              radius={selectedSiteAnalysis.size.radiusM}
+              pathOptions={{ color: COLORS.recommendStar, weight: 2.5, dashArray: '8 6', fillColor: COLORS.recommendStar, fillOpacity: 0.08 }}
+              interactive={false}
+            >
+              <Tooltip permanent direction="top">{`${selectedSiteAnalysis.size.key} · would reach ${REACH_LABEL[selectedSiteAnalysis.size.key]}`}</Tooltip>
+            </Circle>
+          )}
+        </Pane>
+        <Pane name="patch" style={{ zIndex: 398 }}>
+          {selectedPatch && <FrameImageLayer key={selectedPatch.id} corners={selectedPatch.corners} source={selectedPatch.highlight} pane="patch" />}
+        </Pane>
+        {options.recommend && gaSites && siteAnalysis && <RecommendMarkers gaSites={gaSites} siteAnalysis={siteAnalysis} addedSites={addedSites} selected={selected} onSelect={onSelect} />}
       </MapContainer>
       <MapButtons map={map} onReset={resetView} />
       <MapOptions
@@ -312,13 +381,15 @@ export default function ZoneMap({
         onCollapsedChange={onOptionsCollapsedChange}
       />
       <MapLegend district={district} />
-      {selectedPlot && selectedAnalysis && <PlotInfoBox plot={selectedPlot} analysis={selectedAnalysis} onClose={onClear} />}
-      {selectedSite && <GaSiteInfoBox site={selectedSite} sitesInSquare={sitesInSquare[selectedSite.zone]} onClose={onClear} />}
+      {selectedPlot && selectedPlotAnalysis && <PlotInfoBox plot={selectedPlot} analysis={selectedPlotAnalysis} onClose={onClear} />}
+      {selectedPatch && patchAnalysis && <PatchInfoBox patch={selectedPatch} analysis={patchAnalysis} onClose={onClear} />}
+      {selectedAdded && <GaSiteInfoBox site={selectedAdded} analysis={selectedAdded.analysis} added onClose={onClear} />}
+      {selectedSite && selectedSiteAnalysis && <GaSiteInfoBox site={selectedSite} analysis={selectedSiteAnalysis} onClose={onClear} />}
       {selectedGroup && <GreenGroupInfoBox group={selectedGroup} onClose={onClear} />}
       {loading && (
         <p className="pointer-events-none absolute left-1/2 top-16 z-[1000] flex -translate-x-1/2 items-center gap-2 rounded-full bg-white px-3 py-1.5 text-sm text-neutral-800 shadow-md lg:top-3">
           <LoaderCircle size={16} className="animate-spin" aria-hidden="true" />
-          Loading zones…
+          Loading…
         </p>
       )}
     </div>

@@ -12,29 +12,61 @@ const icon = (selected) =>
 const STAR = icon(false);
 const SELECTED_STAR = icon(true);
 
-/** The ★ tooltip: a recommended site from the backend GA, its rank in its 1 km square and its area. */
-export function recommendLabel(site, sitesInSquare) {
-  return `★ Recommended site (GA) · rank ${site.rank}${sitesInSquare ? ` of ${sitesInSquare}` : ''} in its 1 km square · ${formatArea(site.areaM2)}`;
+/** The ★ tooltip: a recommended site from the backend GA (or added by the app in a gap), its score, level and area. */
+export function recommendLabel(site, analysis, added = false) {
+  return `★ ${added ? 'Added site (app)' : 'Recommended site (GA)'} · score ${analysis.score} · ${analysis.level.label} · ${formatArea(site.areaM2)}`;
 }
 
-/** A ★ on every site the backend's genetic algorithm recommends; clicking one selects it. */
-export default function RecommendMarkers({ gaSites, sitesInSquare, selected, onSelect }) {
-  return gaSites.features.map(({ geometry, properties: site }) => {
-    const isSelected = selected?.kind === 'ga' && selected.id === site.id;
-    return (
-      <Marker
-        key={site.id}
-        position={[geometry.coordinates[1], geometry.coordinates[0]]}
-        icon={isSelected ? SELECTED_STAR : STAR}
-        zIndexOffset={isSelected ? 1000 : 0}
-        keyboard={false}
-        bubblingMouseEvents={false}
-        eventHandlers={{ click: () => onSelect({ kind: 'ga', id: site.id }) }}
-      >
-        <Tooltip direction="top" offset={[0, -12]}>
-          {recommendLabel(site, sitesInSquare[site.zone])}
-        </Tooltip>
-      </Marker>
-    );
-  });
+function Star({ id, kind, lngLat, label, selected, onSelect }) {
+  const isSelected = selected?.kind === kind && selected.id === id;
+  return (
+    <Marker
+      position={[lngLat[1], lngLat[0]]}
+      icon={isSelected ? SELECTED_STAR : STAR}
+      zIndexOffset={isSelected ? 1000 : 0}
+      keyboard={false}
+      bubblingMouseEvents={false}
+      eventHandlers={{ click: () => onSelect({ kind, id }) }}
+    >
+      <Tooltip direction="top" offset={[0, -12]}>
+        {label}
+      </Tooltip>
+    </Marker>
+  );
+}
+
+/**
+ * A ★ on every site the backend's genetic algorithm recommends, except the ones removed (siteAnalysis.keptIds), and on
+ * every site the app added in the gaps between them (addedSites); clicking one selects it.
+ */
+export default function RecommendMarkers({ gaSites, siteAnalysis, addedSites, selected, onSelect }) {
+  const kept = new Set(siteAnalysis.keptIds);
+  return (
+    <>
+      {gaSites.features
+        .filter((f) => kept.has(f.properties.id))
+        .map(({ geometry, properties: site }) => (
+          <Star
+            key={site.id}
+            id={site.id}
+            kind="ga"
+            lngLat={geometry.coordinates}
+            label={recommendLabel(site, siteAnalysis.sites[site.id])}
+            selected={selected}
+            onSelect={onSelect}
+          />
+        ))}
+      {(addedSites ?? []).map((site) => (
+        <Star
+          key={site.id}
+          id={site.id}
+          kind="added"
+          lngLat={site.lngLat}
+          label={recommendLabel(site, site.analysis, true)}
+          selected={selected}
+          onSelect={onSelect}
+        />
+      ))}
+    </>
+  );
 }

@@ -23,7 +23,7 @@ export const BASEMAPS = {
   },
 };
 
-/** The map opens on Don Mueang; minZoom is raised at runtime so you can't zoom far out of it. */
+/** The map opens on the district; minZoom is raised at runtime so you can't zoom far out of it. */
 export const MAP_DEFAULTS = {
   zoom: 13,
   minZoom: 10,

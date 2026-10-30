@@ -2,7 +2,7 @@
 // Usage (in the generator folder, see README.md): node make-suan-luang-data.mjs <project-root>
 // Needs suan-luang-district-raw.json (fetch-district.mjs --name "Suan Luang District, Bangkok")
 //   and suan-luang-frame-raw.json (fetch-frame-osm.mjs over the Theosmain frame + 0.005°)
-//   and <project-root>/src/mock/suan-luang/frame.json (make-heatmaps.py).
+//   and <project-root>/src/mock/suan-luang/frame.json (make-green-layer.py).
 // Writes:
 //   src/data/districts/suan-luang.json         Suan Luang + neighbouring districts (real OSM boundaries)
 //   src/mock/suan-luang/abandoned.geojson      EXAMPLE abandoned plots from OSM land use (not backend results)
@@ -92,6 +92,8 @@ const safeInside = (point, shape) => {
 
 const osm = osmtogeojson(JSON.parse(fs.readFileSync('suan-luang-frame-raw.json', 'utf8')));
 const polygons = osm.features.filter((f) => /Polygon/.test(f.geometry?.type));
+// Plots still tagged as land use in OpenStreetMap that the satellite photo shows are built up now.
+const BUILT_UP = ['Park Heritage 20'];
 const taken = polygons.filter((f) => TAKEN(f.properties));
 const tagCounts = {};
 let candidates = [];
@@ -111,6 +113,7 @@ for (const f of polygons) {
   if (m2 < MIN_PLOT_M2) continue;
   const inside = labelPoint(piece);
   if (taken.some((t) => safeInside(inside, t))) continue;
+  if (BUILT_UP.includes(f.properties.name)) continue;
   candidates.push({ piece, m2, cover, tag: key, name: f.properties.name ?? null, inside });
 }
 // A smaller candidate that sits inside a larger one is the same land mapped twice.

@@ -1,13 +1,11 @@
-"""One-off: make the heat maps and the Suan Luang green layer with the backend's own make_heatmap().
+"""One-off: make the Suan Luang green layer and the image frame from the backend's newest run.
 
-Usage: python -I -B make-heatmaps.py <backend-root> <project-root>
+Usage: python -I -B make-green-layer.py <backend-root> <project-root>
   <backend-root> = the Green-zone-v3 folder (only read, never written). Its newest Final_Results/Theosmain/run_* is used.
 Writes:
   src/mock/suan-luang/green.png     backend green (Theosmain round 1) as a see-through overlay
-  src/mock/suan-luang/heatmap.png   make_heatmap(style='proximity', radius_m=150) of that green
   src/mock/suan-luang/frame.json    the image's extent (UTM 47N) and four corners as [lat, lng]
-  src/mock/don-mueang/heatmap.png   the same heat map from the Don Mueang example NDVI grid (NDVI >= 0.3 = green)
-Row 0 of every image is the north edge and column 0 the west edge of its frame.
+Row 0 of the image is the north edge and column 0 the west edge of its frame.
 
 The Theosmain GeoTIFF is not in the backend repo, so the image's position is fitted: every GA site in
 ga_parks/ga_parks.geojson is the centroid of a green patch inside its 1 km zone (2000 px, zone r0_c0 at the top-left
@@ -27,7 +25,6 @@ from scipy import ndimage
 THEOSMAIN_CRS = 'EPSG:32647'  # UTM zone 47N, metres
 BACKEND_GREEN_RGB = (60, 220, 90)
 GREEN_OVERLAY_RGBA = (0, 180, 65, 200)
-RADIUS_M = 150
 ZONE_PX = 2000  # ga_parks.py cell_px
 
 
@@ -90,10 +87,6 @@ def fit_origin(mask, image_px, pixel_m, sites):
 
 def main(backend_root, project_root):
     backend, project = Path(backend_root), Path(project_root)
-    sys.path.insert(0, str(backend))
-    from greensight.heatmap import make_heatmap  # the backend's function, unchanged
-
-    # --- Suan Luang (backend Theosmain) ---
     run = latest_run(backend)
     print(f'backend run: {run}')
     summary = json.loads((run / 'round1/summary.json').read_text(encoding='utf-8'))
@@ -110,8 +103,6 @@ def main(backend_root, project_root):
 
     pixel_m = width_m / mask.shape[1]
     print(f'Suan Luang green mask {mask.shape[1]}x{mask.shape[0]} at {pixel_m:.2f} m: {mask.sum() * pixel_m ** 2 / 1e6:.3f} km2 green')
-    heat = make_heatmap(mask, pixel_m, min_area_m2=pixel_m ** 2, radius_m=RADIUS_M, style='proximity')
-    save_rgba(project / 'src/mock/suan-luang/heatmap.png', heat['rgba'])
     green = np.zeros((*mask.shape, 4), dtype='uint8')
     green[mask == 1] = GREEN_OVERLAY_RGBA
     save_rgba(project / 'src/mock/suan-luang/green.png', green)
@@ -127,16 +118,8 @@ def main(backend_root, project_root):
     for n in names:
         print(f'{n}: {corners[n]}')
 
-    # --- Don Mueang (example NDVI grid of gisda_03) ---
-    grid = json.loads((project / 'src/mock/don-mueang/grid.json').read_text(encoding='utf-8'))
-    ndvi = np.array([[np.nan if v is None else v for v in row] for row in grid['ndvi']], dtype='float64')
-    dm_mask = np.where(np.isnan(ndvi), 255, (ndvi >= 0.3).astype('uint8')).astype('uint8')
-    dm_pixel_m = 4.994  # sqrt of the mean cell area, 24.94 m²
-    dm_heat = make_heatmap(dm_mask, dm_pixel_m, min_area_m2=25, radius_m=RADIUS_M, style='proximity')
-    save_rgba(project / 'src/mock/don-mueang/heatmap.png', dm_heat['rgba'])
-
 
 if __name__ == '__main__':
     if len(sys.argv) != 3:
-        raise SystemExit('Usage: python -I -B make-heatmaps.py <backend-root> <project-root>')
+        raise SystemExit('Usage: python -I -B make-green-layer.py <backend-root> <project-root>')
     main(sys.argv[1], sys.argv[2])
